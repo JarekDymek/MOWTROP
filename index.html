@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sędzia Internat - Zawody</title>
+    
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sedzia%20Internat%22%2C%22short_name%22%3A%22Sedzia%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%23111827%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg+xml%2C%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%2715%25%27%20fill%3D%27%23111827%27%2F%3E%3Cpath%20d%3D%27M256%2090L340%20260L500%20275L380%20385L420%20500L256%20430L92%20500L132%20385L12%20275L172%20260Z%27%20fill%3D%27%23f59e0b%27%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg+xml%22%7D%5D%7D">
+    <meta name="theme-color" content="#111827">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #FFFFFF;
+            color: #000000;
+        }
+        body { font-family: 'Inter', -apple-system, sans-serif; }
+        
+        #main-app {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .organizer-layout {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        @media (min-width: 768px) {
+            .organizer-layout {
+                flex-direction: row;
+            }
+        }
+
+        .content-wrapper {
+            flex-grow: 1;
+            background-color: #FFFFFF;
+            padding: 0.75rem;
+            overflow-y: auto;
+        }
+
+        /* GIGANTYCZNE ZAKŁADKI DO TRAFIANIA PALCEM */
+        .tab-nav {
+            display: flex;
+            flex-direction: row;
+            background-color: #111827;
+            width: 100%;
+        }
+        @media (min-width: 768px) {
+            .tab-nav {
+                flex-direction: column;
+                width: 140px;
+                min-width: 140px;
+            }
+        }
+
+        .tab-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.2rem 0.5rem;
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            text-align: center;
+            border: 2px solid #111827;
+            cursor: pointer;
+        }
+        @media (min-width: 768px) {
+            .tab-button {
+                height: 25%;
+                font-size: 1.4rem;
+            }
+        }
+
+        .tab-button.active {
+            background-color: #F59E0B;
+            color: #000000;
+            border-color: #F59E0B;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        #live-timer {
+            font-family: monospace;
+            font-weight: 900;
+        }
+        
+        .sun-border { border: 4px solid #000000 !important; }
+        .sun-input { background-color: #F3F4F6 !important; color: #000000 !important; border: 4px solid #000000 !important; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="main-app">
+        
+        <header class="bg-black text-white py-2 px-4 text-center flex-shrink-0 flex justify-between items-center sun-border">
+            <h1 id="current-comp-header" class="text-2xl md:text-4xl font-black uppercase tracking-wide text-amber-400 truncate">Konkurs</h1>
+            <button id="pwa-install-btn" class="hidden bg-amber-500 text-black font-black px-4 py-1 rounded text-sm md:text-lg animate-bounce">POBIERZ APPKĘ</button>
+        </header>
+
+        <main class="organizer-layout">
+            
+            <div class="content-wrapper">
+                <div class="tab-content-container h-full">
+
+                    <div id="konkurencje" class="tab-content active space-y-4">
+                        <div>
+                            <label for="competitionSelect" class="block font-black text-2xl mb-1">1. WYBIERZ AKTUALNĄ KONKURENCJĘ:</label>
+                            <select id="competitionSelect" onchange="switchCompetition()" class="w-full p-4 text-2xl md:text-3xl font-black rounded-lg sun-border bg-white cursor-pointer">
+                                <option value="0">KONKURENCJA 1</option>
+                                <option value="1">KONKURENCJA 2</option>
+                                <option value="2">KONKURENCJA 3</option>
+                                <option value="3">KONKURENCJA 4</option>
+                                <option value="4">KONKURENCJA 5</option>
+                                <option value="5">KONKURENCJA 6</option>
+                                <option value="6">KONKURENCJA 7</option>
+                                <option value="7">KONKURENCJA 8</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="competitionNameInput" class="block font-black text-2xl mb-1">ZMIEŃ NAZWĘ TEJ KONKURENCJI:</label>
+                            <input type="text" id="competitionNameInput" oninput="updateCompetitionName(this.value)" class="w-full p-4 text-2xl font-black rounded-lg sun-input" placeholder="Wpisz nazwę własną...">
+                        </div>
+                        <div>
+                            <label class="block font-black text-2xl mb-2">2. OKREŚL ZASADY WYNIKU:</label>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <button id="sort-asc-btn" onclick="setSortOrder('asc')" class="flex-1 p-5 font-black rounded-lg text-2xl md:text-3xl sun-border transition-colors">
+                                    ↓ Mniej = Lepiej (np. Czas)
+                                </button>
+                                <button id="sort-desc-btn" onclick="setSortOrder('desc')" class="flex-1 p-5 font-black rounded-lg text-2xl md:text-3xl sun-border transition-colors">
+                                    ↑ Więcej = Lepiej (np. Punkty)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="uczestnicy" class="tab-content space-y-4">
+                        <div>
+                            <label class="block font-black text-2xl mb-1">DODAJ NOWEGO UCZESTNIKA (ZGŁOSZENIE):</label>
+                            <div class="flex gap-2">
+                                <input type="text" id="nameInput" placeholder="WPISZ IMIĘ UCZESTNIKA" onkeydown="handleManualNameInput(event)" class="flex-grow p-4 text-2xl md:text-3xl font-black rounded-lg sun-input" />
+                                <button onclick="addParticipantFromInput()" class="p-4 bg-green-600 text-white text-2xl md:text-3xl font-black rounded-lg sun-border active:bg-green-800">DODAJ</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-black text-2xl mb-1">LISTA ZGŁOSZONYCH UCZESTNIKÓW:</label>
+                            <div class="max-h-[50vh] overflow-y-auto sun-border rounded-lg p-2 bg-gray-50">
+                                <ol id="participant-list" class="list-decimal list-inside space-y-2 text-2xl font-black"></ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="wyniki" class="tab-content h-full flex flex-col">
+                        <div class="flex-grow overflow-auto sun-border rounded-lg">
+                            <table class="w-full text-left border-collapse bg-white">
+                                <thead class="bg-black text-white text-xl md:text-2xl sticky top-0">
+                                    <tr>
+                                        <th class="p-3 font-black">Lp</th>
+                                        <th class="p-3 font-black">Imię</th>
+                                        <th class="p-3 font-black text-center">Wynik</th>
+                                        <th class="p-3 font-black text-center">Start / Akcja</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="participantsBody" class="text-2xl md:text-3xl font-black division-y-4 division-black">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="podsumowanie" class="tab-content space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button onclick="summarizeResults()" class="w-full p-5 bg-amber-500 text-black text-2xl md:text-3xl font-black rounded-lg sun-border active:bg-amber-600">🏆 PODSUMUJ WYNIKI ETAPU</button>
+                            <button onclick="exportPDF()" class="w-full p-5 bg-blue-600 text-white text-2xl md:text-3xl font-black rounded-lg sun-border active:bg-blue-700">📄 EKSPORTUJ DO PDF</button>
+                        </div>
+                        
+                        <hr class="border-2 border-black my-4">
+                        
+                        <div class="p-4 bg-gray-100 sun-border rounded-lg space-y-3">
+                            <h3 class="text-2xl font-black text-center uppercase">Bezpiecznik Awaryjny (Przenoszenie danych)</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <button onclick="downloadBackupJSON()" class="p-4 bg-purple-700 text-white text-xl font-black rounded-lg active:bg-purple-800">📥 POBIERZ STAN (.JSON)</button>
+                                <div class="relative">
+                                    <input type="file" id="upload-json-input" accept=".json" onchange="uploadBackupJSON(event)" class="hidden">
+                                    <button onclick="document.getElementById('upload-json-input').click()" class="w-full p-4 bg-teal-600 text-white text-xl font-black rounded-lg active:bg-teal-700">📤 WCZYTAJ STAN Z PLIKU</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-6">
+                            <button onclick="resetCompetitionWithConfirmation()" class="w-full p-4 bg-red-600 text-white text-xl font-black rounded-lg sun-border active:bg-red-800">🔄 RESETUJ TĘ KONKURENCJĘ</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <nav class="tab-nav flex-shrink-0 sun-border">
+                <button class="tab-button active" data-tab="konkurencje">1.Konk.</button>
+                <button class="tab-button" data-tab="uczestnicy">2.Uczestnicy</button>
+                <button class="tab-button" data-tab="wyniki">3.Start</button>
+                <button class="tab-button" data-tab="podsumowanie">4.Finał</button>
+            </nav>
+
+        </main>
+    </div>
+
+    <div id="focus-mode" class="hidden fixed inset-0 bg-white flex flex-col items-center justify-between p-4 z-50">
+        <div class="w-full text-center bg-black text-white py-4 sun-border rounded-lg flex justify-between items-center px-4">
+            <div class="text-left max-w-[70%]">
+                <p class="text-xl font-black tracking-widest text-gray-400">TERAZ STARTUJE:</p>
+                <p id="focus-participant-name" class="text-3xl md:text-5xl font-black text-amber-400 uppercase truncate"></p>
+            </div>
+            <button id="focus-back-btn" onclick="exitFocusModeWithoutSave()" class="p-4 bg-black text-white border-2 border-white text-xl md:text-2xl font-black rounded-xl active:bg-gray-900">⬅ COFNIJ (REZYGNACJA)</button>
+        </div>
+        
+        <div id="live-timer" class="text-7xl sm:text-9xl md:text-[14rem] font-black text-black tracking-tighter my-auto">0,00</div>
+        
+        <div id="focus-controls" class="w-full max-w-2xl text-center pb-4">
+            <button id="focus-start-btn" onclick="startStoper()" class="w-full p-8 bg-green-600 text-white text-4xl md:text-6xl font-black rounded-2xl sun-border shadow-2xl active:bg-green-700">START</button>
+            <div id="focus-running-btns" class="hidden grid grid-cols-2 gap-4">
+                <button onclick="recordLoop()" class="p-8 bg-blue-600 text-white text-3xl md:text-5xl font-black rounded-2xl sun-border active:bg-blue-700">🔁 LOOP</button>
+                <button onclick="stopTimer()" class="p-8 bg-red-600 text-white text-3xl md:text-5xl font-black rounded-2xl sun-border active:bg-red-700">⏹️ STOP</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-focus-mode" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-50">
+        <div class="bg-white p-6 rounded-2xl sun-border w-full max-w-lg text-center">
+            <p id="result-focus-name" class="text-2xl md:text-3xl font-black mb-4"></p>
+            <input type="number" step="0.01" id="result-focus-input" class="w-full p-4 text-center text-5xl font-black rounded-xl sun-border mb-6" placeholder="0.00" />
+            <div class="grid grid-cols-2 gap-2">
+                <button onclick="resultFocusMode.classList.add('hidden')" class="p-4 bg-gray-500 text-white text-xl font-black rounded-xl">ANULUJ</button>
+                <button id="result-focus-save" class="p-4 bg-amber-500 text-black text-xl font-black rounded-xl sun-border">ZAPISZ</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-70 hidden" style="z-index: 60;" onclick="hideModal()"></div>
+    <div id="modal-panel" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl sun-border p-6 w-11/12 max-w-xl hidden text-black" style="z-index: 70;">
+        <h2 id="modal-title" class="text-3xl font-black mb-4 text-amber-600 border-b-4 border-black pb-2 uppercase"></h2>
+        <div id="modal-content" class="mb-6 max-h-[55vh] overflow-y-auto text-2xl font-bold"></div>
+        <div id="modal-buttons" class="flex flex-col gap-2"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <script>
+        // --- OBSŁUGA ZAKŁADEK ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTabId = button.dataset.tab;
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    button.classList.add('active');
+                    document.getElementById(targetTabId).classList.add('active');
+                });
+            });
+        });
+
+        // --- ZARZĄDZANIE STANEM ---
+        let competitions = [];
+        let currentCompetition = 0;
+        let timer = null, startTime = null, currentIndex = null, loops = [];
+        const APP_STORAGE_KEY = 'sedzia_internat_data_v2';
+
+        // --- ELEMENTY DOM ---
+        const nameInput = document.getElementById("nameInput");
+        const participantsBody = document.getElementById("participantsBody");
+        const competitionSelect = document.getElementById("competitionSelect");
+        const competitionNameInput = document.getElementById("competitionNameInput");
+        const currentCompHeader = document.getElementById("current-comp-header");
+        const focusModeContainer = document.getElementById('focus-mode');
+        const liveTimerDisplay = document.getElementById('live-timer');
+        const focusParticipantName = document.getElementById('focus-participant-name');
+        const sortAscBtn = document.getElementById('sort-asc-btn');
+        const sortDescBtn = document.getElementById('sort-desc-btn');
+        const focusStartBtn = document.getElementById('focus-start-btn');
+        const focusRunningBtns = document.getElementById('focus-running-btns');
+        const focusBackBtn = document.getElementById('focus-back-btn');
+        const resultFocusMode = document.getElementById('result-focus-mode');
+        const resultFocusName = document.getElementById('result-focus-name');
+        const resultFocusInput = document.getElementById('result-focus-input');
+        const resultFocusSaveBtn = document.getElementById('result-focus-save');
+        const participantList = document.getElementById('participant-list');
+
+        function saveData() {
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(competitions));
+        }
+
+        function loadData() {
+            const savedData = localStorage.getItem(APP_STORAGE_KEY);
+            const defaultState = Array.from({ length: 8 }, (_, i) => ({
+                name: `KONKURENCJA ${i + 1}`,
+                participants: [],
+                sortOrder: null
+            }));
+
+            if (savedData) {
+                competitions = JSON.parse(savedData);
+                if (competitions.length < 8) {
+                    competitions = [...competitions, ...defaultState.slice(competitions.length)];
+                }
+            } else {
+                competitions = defaultState;
+            }
+            switchCompetition();
+        }
+
+        // --- ZARZĄDZANIE UCZESTNIKAMI ---
+        function addParticipantFromInput() {
+            const name = nameInput.value.trim().toUpperCase();
+            if (name) {
+                competitions[currentCompetition].participants.push({ name, result: null });
+                nameInput.value = "";
+                nameInput.focus();
+                updateAllUI();
+            }
+        }
+        
+        function handleManualNameInput(event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); 
+                addParticipantFromInput();
+            }
+        }
+
+        function deleteParticipant(index) {
+            competitions[currentCompetition].participants.splice(index, 1);
+            updateAllUI();
+        }
+
+        function updateResult(index, value) {
+            const val = parseFloat(String(value).replace(',', '.'));
+            competitions[currentCompetition].participants[index].result = isNaN(val) ? null : val;
+            updateAllUI();
+        }
+
+        function formatResult(result) {
+            if (result === null) return "-";
+            return Number.isInteger(result) ? result.toString() : result.toFixed(2).replace('.', ',');
+        }
+
+        // --- RENDOWANIE INTERFEJSU ---
+        function updateAllUI() {
+            saveData();
+            currentCompHeader.textContent = competitions[currentCompetition].name;
+            renderParticipantsTable();
+            renderParticipantList();
+        }
+
+        function renderParticipantsTable() {
+            participantsBody.innerHTML = "";
+            const { participants, sortOrder } = competitions[currentCompetition];
+            const isStartDisabled = sortOrder === null;
+
+            if (participants.length === 0) {
+                participantsBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500">Brak zgłoszonych uczestników. Przejdź do zakładki "2.Uczestnicy".</td></tr>`;
+                return;
+            }
+
+            participants.forEach((p, index) => {
+                const row = document.createElement("tr");
+                row.className = "border-b-4 border-black hover:bg-yellow-50";
+                row.innerHTML = `
+                    <td class="p-4 font-black bg-black text-white text-center w-16">${index + 1}</td>
+                    <td class="p-4 truncate max-w-[150px]">${p.name}</td>
+                    <td class="p-4 text-center bg-gray-100 cursor-pointer text-amber-600 font-black" onclick="editResultInFocus(${index})">${formatResult(p.result)}</td>
+                    <td class="p-4 text-center flex justify-center items-center gap-2">
+                        <button 
+                            onclick="launchFocusMode(${index})" 
+                            class="flex-grow py-3 px-4 bg-green-600 text-white font-black rounded-lg text-xl sun-border ${isStartDisabled ? 'opacity-20' : 'active:bg-green-700'}"
+                            ${isStartDisabled ? 'disabled title="Wybierz zasady w Konkurencjach!"' : ''}
+                        >START</button>
+                        <button onclick="deleteParticipant(${index})" class="p-3 bg-red-600 text-white font-black rounded-lg sun-border active:bg-red-800 text-sm">🗑️</button>
+                    </td>
+                `;
+                participantsBody.appendChild(row);
+            });
+        }
+
+        function renderParticipantList() {
+            participantList.innerHTML = "";
+            const { participants } = competitions[currentCompetition];
+            if (participants.length === 0) {
+                participantList.innerHTML = `<li class="text-gray-500 p-2 text-xl">Brak zgłoszeń. Wpisz imię powyżej.</li>`;
+                return;
+            }
+            participants.forEach(p => {
+                const li = document.createElement("li");
+                li.className = "py-1 border-b border-gray-300";
+                li.textContent = p.name;
+                participantList.appendChild(li);
+            });
+        }
+
+        // --- TRYB SĘDZIOWANIA (STOPER) ---
+        function editResultInFocus(index) {
+            currentIndex = index;
+            const participant = competitions[currentCompetition].participants[index];
+            resultFocusName.textContent = `Ręczny wynik dla: ${participant.name}`;
+            resultFocusInput.value = participant.result !== null ? participant.result : '';
+            resultFocusMode.classList.remove('hidden');
+            resultFocusInput.focus();
+            resultFocusSaveBtn.onclick = () => {
+                updateResult(index, resultFocusInput.value);
+                resultFocusMode.classList.add('hidden');
+            };
+        }
+
+        function launchFocusMode(index) {
+            currentIndex = index;
+            focusParticipantName.textContent = competitions[currentCompetition].participants[index].name;
+            liveTimerDisplay.textContent = "0,00";
+            focusStartBtn.classList.remove('hidden');
+            focusRunningBtns.classList.add('hidden');
+            focusBackBtn.classList.remove('hidden'); // Pokaż przycisk rezygnacji przed startem
+            focusModeContainer.classList.remove('hidden');
+        }
+
+        function startStoper() {
+            startTime = Date.now();
+            loops = [];
+            timer = setInterval(() => {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                liveTimerDisplay.textContent = elapsedTime.toFixed(2).replace('.', ',');
+            }, 45);
+            focusStartBtn.classList.add('hidden');
+            focusBackBtn.classList.add('hidden'); // Ukryj rezygnację, stoper ruszył
+            focusRunningBtns.classList.remove('hidden');
+        }
+
+        function exitFocusModeWithoutSave() {
+            // Bezpieczne zamknięcie okna focus bez zmian danych (rezygnacja zawodnika)
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+            focusModeContainer.classList.add('hidden');
+        }
+
+        function recordLoop() {
+            if (!startTime) return;
+            const elapsed = (Date.now() - startTime) / 1000;
+            loops.push(elapsed);
+            const alertBox = document.createElement('div');
+            alertBox.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white font-black text-2xl p-4 rounded-xl sun-border z-50';
+            alertBox.textContent = `ŁAPALNY CZAS ${loops.length}: ${elapsed.toFixed(2)}s`;
+            document.body.appendChild(alertBox);
+            setTimeout(() => alertBox.remove(), 1500);
+        }
+
+        function stopTimer() {
+            clearInterval(timer);
+            timer = null;
+            const finalTime = (Date.now() - startTime) / 1000;
+            
+            const closeFocus = () => {
+                focusModeContainer.classList.add('hidden');
+                hideModal();
+            };
+
+            if (loops.length === 0) {
+                updateResult(currentIndex, finalTime);
+                closeFocus();
+            } else {
+                let htmlContent = "<p class='mb-4 text-xl text-center'>Wybierz czas do zapisu:</p>";
+                const buttons = loops.map((l, i) => ({
+                    text: `Międzyczas ${i + 1}: ${l.toFixed(2)}s`, class: 'bg-blue-600 text-white p-4 text-xl w-full text-left sun-border',
+                    action: () => { updateResult(currentIndex, loops[i]); closeFocus(); }
+                }));
+                buttons.push({
+                    text: `Czas końcowy: ${finalTime.toFixed(2)}s`, class: 'bg-green-600 text-white p-4 text-xl w-full text-left sun-border',
+                    action: () => { updateResult(currentIndex, finalTime); closeFocus(); }
+                });
+                buttons.push({ text: "❌ Anuluj start (Nie zapisuj)", class: "bg-red-600 text-white p-3 mt-4 w-full", action: closeFocus });
+                showModal("Wybór Wyniku Końcowego", htmlContent, buttons);
+            }
+        }
+
+        // --- ZARZĄDZANIE KONKURENCJAMI ---
+        function switchCompetition() {
+            currentCompetition = parseInt(competitionSelect.value);
+            competitionNameInput.value = competitions[currentCompetition].name;
+            updateSortButtonsUI();
+            updateAllUI();
+        }
+
+        function updateCompetitionName(newName) {
+            competitions[currentCompetition].name = newName.toUpperCase();
+            saveData();
+            currentCompHeader.textContent = competitions[currentCompetition].name;
+        }
+
+        function setSortOrder(order) {
+            competitions[currentCompetition].sortOrder = order;
+            updateSortButtonsUI();
+            updateAllUI();
+        }
+
+        function updateSortButtonsUI() {
+            const { sortOrder } = competitions[currentCompetition];
+            sortAscBtn.className = `flex-1 p-5 font-black rounded-lg text-xl md:text-2xl sun-border transition-colors ${sortOrder === 'asc' ? 'bg-amber-500 text-black' : 'bg-white text-black'}`;
+            sortDescBtn.className = `flex-1 p-5 font-black rounded-lg text-xl md:text-2xl sun-border transition-colors ${sortOrder === 'desc' ? 'bg-amber-500 text-black' : 'bg-white text-black'}`;
+        }
+
+        function sortResults(participants) {
+            const { sortOrder } = competitions[currentCompetition];
+            if (!sortOrder) return participants.filter(p => p.result !== null);
+            return [...participants]
+                .filter(p => p.result !== null)
+                .sort((a, b) => sortOrder === 'desc' ? b.result - a.result : a.result - b.result);
+        }
+
+        function summarizeResults() {
+            const sorted = sortResults(competitions[currentCompetition].participants);
+            if (sorted.length === 0) {
+                showModal("Wyniki", "<p class='text-center py-4'>Brak zapisanych wyników na tym etapie.</p>", [{text: "OK", class: "bg-black text-white p-4 w-full", action: hideModal}]);
+                return;
+            }
+            let listHtml = '<ol class="list-decimal list-inside space-y-3 text-3xl font-black">';
+            sorted.forEach((p, idx) => {
+                let highlight = idx === 0 ? 'text-yellow-600' : idx === 1 ? 'text-gray-500' : idx === 2 ? 'text-amber-700' : '';
+                listHtml += `<li class="p-2 border-b-2 border-gray-100 ${highlight}"> ${p.name} - <span class="bg-black text-white px-2 py-1 rounded">${formatResult(p.result)}</span></li>`;
+            });
+            listHtml += '</ol>';
+            showModal(`🏆 Tablica - ${competitions[currentCompetition].name}`, listHtml, [{text: "POWRÓT DO SĘDZIOWANIA", class: "bg-green-600 text-white p-5 w-full text-2xl font-black sun-border", action: hideModal}]);
+        }
+
+        function resetCompetitionWithConfirmation() {
+            showModal("⚠️ Potwierdzenie", `<p class='text-xl text-center'>Czy na pewno wyczyścić wszystkich uczestników i wyniki z konkurencji "${competitions[currentCompetition].name}"?</p>`, [
+                {text: "Zostaw, błąd kliknięcia", class: "bg-gray-500 text-white p-4 w-full", action: hideModal},
+                {text: "TAK, WYCZYŚĆ WSZYSTKO", class: "bg-red-600 text-white p-4 w-full font-black sun-border", action: () => {
+                    competitions[currentCompetition].participants = [];
+                    updateAllUI();
+                    hideModal();
+                }}
+            ]);
+        }
+
+        // --- BEZPIECZNIK: JSON BACKUP/RESTORE ---
+        function downloadBackupJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(competitions));
+            const downloadAnchor = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0,10);
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `sedzia_zawody_backup_${dateStr}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function uploadBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (Array.isArray(parsed) && parsed.length === 8) {
+                        competitions = parsed;
+                        updateAllUI();
+                        showModal("Sukces", "<p class='text-center text-green-600 p-4'>Stan zawodów został pomyślnie wczytany!</p>", [{text: "SUPER", class: "bg-black text-white p-4 w-full", action: hideModal}]);
+                    } else {
+                        throw new Error();
+                    }
+                } catch (err) {
+                    showModal("Błąd", "<p class='text-center text-red-600 p-4'>Nieprawidłowy plik kopii zapasowej JSON.</p>", [{text: "OK", class: "bg-black text-white p-4 w-full", action: hideModal}]);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- EKSPORT PDF ---
+        function exportPDF() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const { name, participants } = competitions[currentCompetition];
+                const sorted = sortResults(participants);
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(22);
+                doc.text(normalizeChars(name), doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+                
+                const columns = ["Miejsce", "Kto (Imie)", "Wynik Koncowy"];
+                const rows = sorted.map((p, i) => [i + 1, normalizeChars(p.name), formatResult(p.result)]);
+                
+                if (rows.length > 0) {
+                    doc.autoTable({ head: [columns], body: rows, startY: 30, theme: 'grid', styles: { fontSize: 14, cellPadding: 4 }, headStyles: { fillColor: [0, 0, 0], fontSize: 15 } });
+                } else {
+                    doc.setFontSize(14);
+                    doc.text("Brak wyników do zapisu.", doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
+                }
+                doc.save(`wyniki_${name.replace(/ /g, '_').toLowerCase()}.pdf`);
+            } catch (e) {
+                alert("Problem przy tworzeniu PDF.");
+            }
+        }
+
+        function normalizeChars(text) {
+            return String(text).replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, m => ({'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ź':'z','ż':'z','Ą':'A','Ć':'C','Ę':'E','Ł':'L','Ń':'N','Ó':'O','Ś':'S','Ź':'Z','Ż':'Z'}[m]||m));
+        }
+
+        // --- OKNA MODALNE UTILS ---
+        function showModal(title, content, buttons) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').innerHTML = content;
+            const container = document.getElementById('modal-buttons');
+            container.innerHTML = '';
+            buttons.forEach(b => {
+                const btn = document.createElement('button');
+                btn.textContent = b.text;
+                btn.className = `p-3 rounded-lg font-black tracking-wide text-center transition-all ${b.class}`;
+                btn.onclick = b.action;
+                container.appendChild(btn);
+            });
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('modal-panel').classList.remove('hidden');
+        }
+        function hideModal() {
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            document.getElementById('modal-panel').classList.add('hidden');
+        }
+
+        // --- INSTALACJA PWA ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                const swContent = `
+                    const CACHE_NAME = 'sedzia-internat-cache-v2';
+                    self.addEventListener('install', e => {
+                        e.waitUntil(caches.open(CACHE_NAME).then(c => c.addAll(['/', location.href])));
+                    });
+                    self.addEventListener('fetch', e => {
+                        e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+                    });
+                `;
+                const blob = new Blob([swContent], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                navigator.serviceWorker.register(swUrl).catch(() => {});
+            });
+        }
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('pwa-install-btn');
+            btn.classList.remove('hidden');
+            btn.addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    btn.classList.add('hidden');
+                    deferredPrompt = null;
+                });
+            });
+        });
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
