@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Sędzia Internat - Zawody</title>
+    
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Sedzia">
+    
+    <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Sedzia%20Internat%22%2C%22short_name%22%3A%22Sedzia%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%23ffffff%22%2C%22theme_color%22%3A%22%23111827%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg+xml%2C%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%2715%25%27%20fill%3D%27%23111827%27%2F%3E%3Cpath%20d%3D%27M256%2090L340%20260L500%20275L380%20385L420%20500L256%20430L92%20500L132%20385L12%20275L172%20260Z%27%20fill%3D%27%23f59e0b%27%2F%3E%3C%2Fsvg%3E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg+xml%22%7D%5D%7D">
+    <meta name="theme-color" content="#111827">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            background-color: #FFFFFF;
+            color: #000000;
+        }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            /* Obsługa wcięć (notch, punch-hole) – Xiaomi, Samsung itp. */
+            padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        /* Pełny ekran z obsługą safe area */
+        #main-app {
+            height: 100dvh; /* dynamic viewport height – nie ucinaj na mobilkach */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        
+        .organizer-layout {
+            display: flex;
+            flex-direction: column;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+        @media (min-width: 768px) {
+            .organizer-layout {
+                flex-direction: row;
+            }
+        }
+
+        .content-wrapper {
+            flex-grow: 1;
+            background-color: #FFFFFF;
+            padding: 0.75rem;
+            overflow-y: auto;
+        }
+
+        .tab-nav {
+            display: flex;
+            flex-direction: row;
+            background-color: #111827;
+            width: 100%;
+            overflow: hidden;
+        }
+        @media (min-width: 768px) {
+            .tab-nav {
+                flex-direction: column;
+                width: 140px;
+                min-width: 140px;
+            }
+        }
+
+        .tab-button {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.8rem 0.2rem;
+            color: #FFFFFF;
+            font-weight: 900;
+            font-size: clamp(0.6rem, 2.8vw, 0.9rem);
+            text-transform: uppercase;
+            text-align: center;
+            border: 2px solid #111827;
+            cursor: pointer;
+            line-height: 1.2;
+            word-break: break-word;
+            overflow: hidden;
+            min-width: 0;
+        }
+        @media (min-width: 768px) {
+            .tab-button {
+                height: 25%;
+                font-size: 1.4rem;
+                padding: 1.2rem 0.5rem;
+            }
+        }
+
+        .tab-button.active {
+            background-color: #F59E0B;
+            color: #000000;
+            border-color: #F59E0B;
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        #live-timer {
+            font-family: monospace;
+            font-weight: 900;
+        }
+        
+        .sun-border { border: 4px solid #000000 !important; }
+        .sun-input { background-color: #F3F4F6 !important; color: #000000 !important; border: 4px solid #000000 !important; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <div id="main-app">
+        
+        <header class="bg-black text-white py-2 px-4 text-center flex-shrink-0 flex justify-between items-center sun-border">
+            <h1 id="current-comp-header" class="text-2xl md:text-4xl font-black uppercase tracking-wide text-amber-400 truncate">Konkurs</h1>
+            <button id="pwa-install-btn" class="hidden bg-amber-500 text-black font-black px-4 py-1 rounded text-sm md:text-lg animate-bounce">ZAINSTALUJ APPKĘ</button>
+        </header>
+
+        <main class="organizer-layout">
+            
+            <div class="content-wrapper">
+                <div class="tab-content-container h-full">
+
+                    <div id="konkurencje" class="tab-content active space-y-4">
+                        <div>
+                            <label for="competitionSelect" class="block font-black text-2xl mb-1">1. WYBIERZ AKTUALNĄ KONKURENCJĘ:</label>
+                            <select id="competitionSelect" onchange="switchCompetition()" class="w-full p-4 text-2xl md:text-3xl font-black rounded-lg sun-border bg-white cursor-pointer">
+                                <option value="0">KONKURENCJA 1</option>
+                                <option value="1">KONKURENCJA 2</option>
+                                <option value="2">KONKURENCJA 3</option>
+                                <option value="3">KONKURENCJA 4</option>
+                                <option value="4">KONKURENCJA 5</option>
+                                <option value="5">KONKURENCJA 6</option>
+                                <option value="6">KONKURENCJA 7</option>
+                                <option value="7">KONKURENCJA 8</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="competitionNameInput" class="block font-black text-2xl mb-1">ZMIEŃ NAZWĘ TEJ KONKURENCJI:</label>
+                            <input type="text" id="competitionNameInput" oninput="updateCompetitionName(this.value)" class="w-full p-4 text-2xl font-black rounded-lg sun-input" placeholder="Wpisz nazwę własną...">
+                        </div>
+                        <div>
+                            <label class="block font-black text-2xl mb-2">2. OKREŚL ZASADY WYNIKU:</label>
+                            <div class="flex flex-col sm:flex-row gap-4">
+                                <button id="sort-asc-btn" onclick="setSortOrder('asc')" class="flex-1 p-5 font-black rounded-lg text-2xl md:text-3xl sun-border transition-colors">
+                                    ↓ Mniej = Lepiej (np. Czas)
+                                </button>
+                                <button id="sort-desc-btn" onclick="setSortOrder('desc')" class="flex-1 p-5 font-black rounded-lg text-2xl md:text-3xl sun-border transition-colors">
+                                    ↑ Więcej = Lepiej (np. Punkty)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="uczestnicy" class="tab-content space-y-4">
+                        <div>
+                            <label class="block font-black text-2xl mb-1">DODAJ NOWEGO UCZESTNIKA (ZGŁOSZENIE):</label>
+                            <div class="flex flex-col gap-2">
+                                <input type="text" id="nameInput" placeholder="WPISZ IMIĘ UCZESTNIKA" onkeydown="handleManualNameInput(event)" class="w-full p-4 text-2xl md:text-3xl font-black rounded-lg sun-input" />
+                                <button onclick="addParticipantFromInput()" class="w-full p-4 bg-green-600 text-white text-2xl font-black rounded-lg sun-border active:bg-green-800">➕ DODAJ UCZESTNIKA</button>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block font-black text-2xl mb-1">LISTA ZGŁOSZONYCH UCZESTNIKÓW:</label>
+                            <div class="max-h-[50vh] overflow-y-auto sun-border rounded-lg p-2 bg-gray-50">
+                                <ol id="participant-list" class="list-decimal list-inside space-y-2 text-2xl font-black"></ol>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="wyniki" class="tab-content h-full flex flex-col">
+                        <div class="flex-grow overflow-auto sun-border rounded-lg">
+                            <table class="w-full text-left border-collapse bg-white table-fixed">
+                                <colgroup>
+                                    <col style="width: 3rem">
+                                    <col style="width: auto">
+                                    <col style="width: 5rem">
+                                    <col style="width: 7.5rem">
+                                </colgroup>
+                                <thead class="bg-black text-white text-base md:text-2xl sticky top-0">
+                                    <tr>
+                                        <th class="p-2 font-black text-center">Lp</th>
+                                        <th class="p-2 font-black">Imię</th>
+                                        <th class="p-2 font-black text-center">Wynik</th>
+                                        <th class="p-2 font-black text-center">Start / Akcja</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="participantsBody" class="text-base md:text-2xl font-black division-y-4 division-black">
+                                    </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="podsumowanie" class="tab-content space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <button onclick="summarizeResults()" class="w-full p-5 bg-amber-500 text-black text-2xl md:text-3xl font-black rounded-lg sun-border active:bg-amber-600">🏆 PODSUMUJ WYNIKI ETAPU</button>
+                            <button onclick="exportPDF()" class="w-full p-5 bg-blue-600 text-white text-2xl md:text-3xl font-black rounded-lg sun-border active:bg-blue-700">📄 EKSPORTUJ DO PDF</button>
+                        </div>
+                        
+                        <hr class="border-2 border-black my-4">
+                        
+                        <div class="p-4 bg-gray-100 sun-border rounded-lg space-y-3">
+                            <h3 class="text-2xl font-black text-center uppercase">Bezpiecznik Awaryjny (Przenoszenie danych)</h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <button onclick="downloadBackupJSON()" class="p-4 bg-purple-700 text-white text-xl font-black rounded-lg active:bg-purple-800">📥 POBIERZ STAN (.JSON)</button>
+                                <div class="relative">
+                                    <input type="file" id="upload-json-input" accept=".json" onchange="uploadBackupJSON(event)" class="hidden">
+                                    <button onclick="document.getElementById('upload-json-input').click()" class="w-full p-4 bg-teal-600 text-white text-xl font-black rounded-lg active:bg-teal-700">📤 WCZYTAJ STAN Z PLIKU</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="pt-6">
+                            <button onclick="resetCompetitionWithConfirmation()" class="w-full p-4 bg-red-600 text-white text-xl font-black rounded-lg sun-border active:bg-red-800">🔄 RESETUJ TĘ KONKURENCJĘ</button>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            
+            <nav class="tab-nav flex-shrink-0 sun-border">
+                <button class="tab-button active" data-tab="konkurencje"><span class="md:hidden">1.Konk.</span><span class="hidden md:inline">1.Konkurencje</span></button>
+                <button class="tab-button" data-tab="uczestnicy"><span class="md:hidden">2.Uczest.</span><span class="hidden md:inline">2.Uczestnicy</span></button>
+                <button class="tab-button" data-tab="wyniki"><span class="md:hidden">3.Start</span><span class="hidden md:inline">3.Start</span></button>
+                <button class="tab-button" data-tab="podsumowanie"><span class="md:hidden">4.Finał</span><span class="hidden md:inline">4.Finał</span></button>
+            </nav>
+
+        </main>
+    </div>
+
+    <div id="focus-mode" class="hidden fixed inset-0 bg-white flex flex-col items-center justify-between p-4 z-50">
+        <div class="w-full bg-black text-white pt-4 pb-3 sun-border rounded-lg px-4">
+            <p class="text-lg font-black tracking-widest text-gray-400 text-center">TERAZ STARTUJE:</p>
+            <p id="focus-participant-name" class="text-4xl md:text-5xl font-black text-amber-400 uppercase text-center truncate px-2 mb-3"></p>
+            <button id="focus-back-btn" onclick="exitFocusModeWithoutSave()"
+                class="w-full py-2 bg-red-700 text-white border-2 border-red-400 text-base font-black rounded-lg active:bg-red-900 flex items-center justify-center gap-2">
+                ✕ ANULUJ / REZYGNACJA
+            </button>
+        </div>
+        
+        <div id="live-timer" class="text-7xl sm:text-9xl md:text-[14rem] font-black text-black tracking-tighter my-auto">0,00</div>
+        
+        <div id="focus-controls" class="w-full max-w-2xl text-center pb-4">
+            <button id="focus-start-btn" onclick="startStoper()" class="w-full p-8 bg-green-600 text-white text-4xl md:text-6xl font-black rounded-2xl sun-border shadow-2xl active:bg-green-700">START</button>
+            <div id="focus-running-btns" class="hidden grid grid-cols-2 gap-4">
+                <button onclick="recordLoop()" class="p-8 bg-blue-600 text-white text-3xl md:text-5xl font-black rounded-2xl sun-border active:bg-blue-700">🔁 LOOP</button>
+                <button onclick="stopTimer()" class="p-8 bg-red-600 text-white text-3xl md:text-5xl font-black rounded-2xl sun-border active:bg-red-700">⏹️ STOP</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="result-focus-mode" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center p-4 z-50">
+        <div class="bg-white p-5 rounded-2xl sun-border w-full max-w-lg text-center">
+            <p id="result-focus-name" class="text-xl md:text-2xl font-black mb-3 text-amber-600 uppercase"></p>
+
+            <!-- Przełącznik trybu: WYNIK NORMALNY / DNF -->
+            <div id="result-mode-tabs" class="flex rounded-xl overflow-hidden sun-border mb-4 text-base font-black">
+                <button id="tab-normal" onclick="setResultMode('normal')"
+                    class="flex-1 py-3 px-2 bg-black text-white transition-colors">
+                    ✅ UKOŃCZYŁ
+                </button>
+                <button id="tab-dnf" onclick="setResultMode('dnf')"
+                    class="flex-1 py-3 px-2 bg-white text-black transition-colors">
+                    ⚠️ NIE UKOŃCZYŁ (DNF)
+                </button>
+            </div>
+
+            <!-- Panel: ukończył normalnie -->
+            <div id="panel-normal">
+                <p class="text-sm text-gray-500 mb-2">Wpisz wynik (czas w sek. lub punkty):</p>
+                <input type="number" step="0.01" min="0" id="result-focus-input"
+                    class="w-full p-3 text-center text-5xl font-black rounded-xl sun-border mb-2"
+                    placeholder="0.00" />
+            </div>
+
+            <!-- Panel: nie ukończył (DNF) -->
+            <div id="panel-dnf" class="hidden">
+                <div class="bg-orange-50 border-4 border-orange-400 rounded-xl p-3 mb-3 text-left text-sm leading-snug">
+                    <p class="font-black text-orange-700 mb-1">⚠️ ZAWODNIK NIE UKOŃCZYŁ KONKURENCJI</p>
+                    <p class="text-gray-700">Wpisz <strong>dystans/wynik cząstkowy</strong> (np. ile metrów przeniósł).<br>
+                    Zawodnik trafi za wszystkich, którzy ukończyli, ale będzie ranking między DNF-ami.<br>
+                    <span class="text-orange-600 font-bold">Więcej = lepsze miejsce wśród DNF.</span></p>
+                </div>
+                <p class="text-sm text-gray-500 mb-2">Wynik cząstkowy (np. metry, punkty):</p>
+                <input type="number" step="0.01" min="0" id="result-dnf-input"
+                    class="w-full p-3 text-center text-5xl font-black rounded-xl border-4 border-orange-400 bg-orange-50 mb-2"
+                    placeholder="0" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mt-3">
+                <button onclick="closeResultFocusMode()" class="p-4 bg-gray-500 text-white text-xl font-black rounded-xl active:bg-gray-600">ANULUJ</button>
+                <button id="result-focus-save" onclick="saveResultFromFocus()"
+                    class="p-4 bg-amber-500 text-black text-xl font-black rounded-xl sun-border active:bg-amber-600">ZAPISZ</button>
+            </div>
+            <button onclick="clearResultInFocus()" class="mt-2 w-full p-2 text-sm text-red-600 font-black underline">Usuń wynik (wróć do „-")</button>
+        </div>
+    </div>
+
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-70 hidden" style="z-index: 60;" onclick="hideModal()"></div>
+    <div id="modal-panel" class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-2xl sun-border p-6 w-11/12 max-w-xl hidden text-black" style="z-index: 70;">
+        <h2 id="modal-title" class="text-3xl font-black mb-4 text-amber-600 border-b-4 border-black pb-2 uppercase"></h2>
+        <div id="modal-content" class="mb-6 max-h-[55vh] overflow-y-auto text-2xl font-bold"></div>
+        <div id="modal-buttons" class="flex flex-col gap-2"></div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    
+    <script>
+        // --- OBSŁUGA ZAKŁADEK ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetTabId = button.dataset.tab;
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    tabContents.forEach(content => content.classList.remove('active'));
+                    button.classList.add('active');
+                    document.getElementById(targetTabId).classList.add('active');
+                });
+            });
+        });
+
+        // --- ZARZĄDZANIE STANEM ---
+        let competitions = [];
+        let currentCompetition = 0;
+        let timer = null, startTime = null, currentIndex = null, loops = [];
+        const APP_STORAGE_KEY = 'sedzia_internat_data_v3';
+
+        // --- ELEMENTY DOM ---
+        const nameInput = document.getElementById("nameInput");
+        const participantsBody = document.getElementById("participantsBody");
+        const competitionSelect = document.getElementById("competitionSelect");
+        const competitionNameInput = document.getElementById("competitionNameInput");
+        const currentCompHeader = document.getElementById("current-comp-header");
+        const focusModeContainer = document.getElementById('focus-mode');
+        const liveTimerDisplay = document.getElementById('live-timer');
+        const focusParticipantName = document.getElementById('focus-participant-name');
+        const sortAscBtn = document.getElementById('sort-asc-btn');
+        const sortDescBtn = document.getElementById('sort-desc-btn');
+        const focusStartBtn = document.getElementById('focus-start-btn');
+        const focusRunningBtns = document.getElementById('focus-running-btns');
+        const focusBackBtn = document.getElementById('focus-back-btn');
+        const resultFocusMode = document.getElementById('result-focus-mode');
+        const resultFocusName = document.getElementById('result-focus-name');
+        const resultFocusInput = document.getElementById('result-focus-input');
+        const resultFocusSaveBtn = document.getElementById('result-focus-save');
+        const participantList = document.getElementById('participant-list');
+
+        function saveData() {
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(competitions));
+        }
+
+        function loadData() {
+            const savedData = localStorage.getItem(APP_STORAGE_KEY);
+            const defaultState = Array.from({ length: 8 }, (_, i) => ({
+                name: `KONKURENCJA ${i + 1}`,
+                participants: [],
+                sortOrder: null
+            }));
+
+            if (savedData) {
+                competitions = JSON.parse(savedData);
+                if (competitions.length < 8) {
+                    competitions = [...competitions, ...defaultState.slice(competitions.length)];
+                }
+            } else {
+                competitions = defaultState;
+            }
+            switchCompetition();
+        }
+
+        // --- ZARZĄDZANIE UCZESTNIKAMI ---
+        function addParticipantFromInput() {
+            const name = nameInput.value.trim().toUpperCase();
+            if (name) {
+                competitions[currentCompetition].participants.push({ name, result: null });
+                nameInput.value = "";
+                nameInput.focus();
+                updateAllUI();
+            }
+        }
+        
+        function handleManualNameInput(event) {
+            if (event.key === "Enter") {
+                event.preventDefault(); 
+                addParticipantFromInput();
+            }
+        }
+
+        function deleteParticipant(index) {
+            competitions[currentCompetition].participants.splice(index, 1);
+            updateAllUI();
+        }
+
+        function updateResult(index, value, isDnf) {
+            const val = parseFloat(String(value).replace(',', '.'));
+            competitions[currentCompetition].participants[index].result = isNaN(val) ? null : val;
+            competitions[currentCompetition].participants[index].dnf = isDnf === true ? true : false;
+            updateAllUI();
+        }
+
+        // Formatuje wynik do wyświetlenia w tabeli/podium
+        function formatResult(result, dnf) {
+            if (result === null || result === undefined) return "-";
+            const num = Number.isInteger(result) ? result.toString() : result.toFixed(2).replace('.', ',');
+            if (dnf) return `⚠️ DNF (${num})`;
+            return num;
+        }
+
+        // --- RENDOWANIE INTERFEJSU ---
+        function updateAllUI() {
+            saveData();
+            currentCompHeader.textContent = competitions[currentCompetition].name;
+            renderParticipantsTable();
+            renderParticipantList();
+        }
+
+        function renderParticipantsTable() {
+            participantsBody.innerHTML = "";
+            const { participants, sortOrder } = competitions[currentCompetition];
+            const isStartDisabled = sortOrder === null;
+
+            if (participants.length === 0) {
+                participantsBody.innerHTML = `<tr><td colspan="4" class="text-center p-8 text-gray-500">Brak zgłoszonych uczestników. Przejdź do zakładki "2.Uczestnicy".</td></tr>`;
+                return;
+            }
+
+            participants.forEach((p, index) => {
+                const row = document.createElement("tr");
+                row.className = "border-b-4 border-black hover:bg-yellow-50";
+                row.innerHTML = `
+                    <td class="p-2 font-black bg-black text-white text-center">${index + 1}</td>
+                    <td class="p-2 truncate">${p.name}</td>
+                    <td class="p-2 text-center bg-gray-100 cursor-pointer text-amber-600 font-black" onclick="editResultInFocus(${index})">${formatResult(p.result, p.dnf)}</td>
+                    <td class="p-2 text-center">
+                        <div class="flex justify-center items-center gap-1">
+                        <button 
+                            onclick="launchFocusMode(${index})" 
+                            class="flex-grow py-2 px-2 bg-green-600 text-white font-black rounded-lg text-sm md:text-xl sun-border ${isStartDisabled ? 'opacity-20' : 'active:bg-green-700'}"
+                            ${isStartDisabled ? 'disabled title="Wybierz zasady w Konkurencjach!"' : ''}
+                        >START</button>
+                        <button onclick="deleteParticipant(${index})" class="p-2 bg-red-600 text-white font-black rounded-lg sun-border active:bg-red-800 text-xs">🗑️</button>
+                        </div>
+                    </td>
+                `;
+                participantsBody.appendChild(row);
+            });
+        }
+
+        function renderParticipantList() {
+            participantList.innerHTML = "";
+            const { participants } = competitions[currentCompetition];
+            if (participants.length === 0) {
+                participantList.innerHTML = `<li class="text-gray-500 p-2 text-xl">Brak zgłoszeń. Wpisz imię powyżej.</li>`;
+                return;
+            }
+            participants.forEach(p => {
+                const li = document.createElement("li");
+                li.className = "py-1 border-b border-gray-300";
+                li.textContent = p.name;
+                participantList.appendChild(li);
+            });
+        }
+
+        // --- TRYB EDYCJI WYNIKÓW (z obsługą DNF) ---
+        let _editingIndex = null;
+
+        function setResultMode(mode) {
+            const isNormal = mode === 'normal';
+            document.getElementById('tab-normal').className =
+                `flex-1 py-3 px-2 transition-colors ${isNormal ? 'bg-black text-white' : 'bg-white text-black'}`;
+            document.getElementById('tab-dnf').className =
+                `flex-1 py-3 px-2 transition-colors ${!isNormal ? 'bg-orange-400 text-black' : 'bg-white text-black'}`;
+            document.getElementById('panel-normal').classList.toggle('hidden', !isNormal);
+            document.getElementById('panel-dnf').classList.toggle('hidden', isNormal);
+        }
+
+        function closeResultFocusMode() {
+            resultFocusMode.classList.add('hidden');
+            _editingIndex = null;
+        }
+
+        function clearResultInFocus() {
+            if (_editingIndex === null) return;
+            competitions[currentCompetition].participants[_editingIndex].result = null;
+            competitions[currentCompetition].participants[_editingIndex].dnf = false;
+            updateAllUI();
+            closeResultFocusMode();
+        }
+
+        function saveResultFromFocus() {
+            if (_editingIndex === null) return;
+            const isNormal = !document.getElementById('panel-normal').classList.contains('hidden');
+            if (isNormal) {
+                const val = document.getElementById('result-focus-input').value;
+                updateResult(_editingIndex, val, false);
+            } else {
+                const val = document.getElementById('result-dnf-input').value;
+                updateResult(_editingIndex, val, true);
+            }
+            closeResultFocusMode();
+        }
+
+        function editResultInFocus(index) {
+            _editingIndex = index;
+            const participant = competitions[currentCompetition].participants[index];
+            document.getElementById('result-focus-name').textContent = `✏️ EDYTUJ WYNIK: ${participant.name}`;
+
+            const isDnf = participant.dnf === true;
+            setResultMode(isDnf ? 'dnf' : 'normal');
+
+            if (isDnf) {
+                document.getElementById('result-dnf-input').value =
+                    participant.result !== null ? participant.result : '';
+            } else {
+                document.getElementById('result-focus-input').value =
+                    participant.result !== null ? participant.result : '';
+            }
+
+            resultFocusMode.classList.remove('hidden');
+            setTimeout(() => {
+                const inp = isDnf
+                    ? document.getElementById('result-dnf-input')
+                    : document.getElementById('result-focus-input');
+                inp.focus();
+                inp.select();
+            }, 50);
+        }
+
+        // --- TRYB SĘDZIOWANIA (STOPER) ---
+        function launchFocusMode(index) {
+            currentIndex = index;
+            focusParticipantName.textContent = competitions[currentCompetition].participants[index].name;
+            liveTimerDisplay.textContent = "0,00";
+            focusStartBtn.classList.remove('hidden');
+            focusRunningBtns.classList.add('hidden');
+            focusBackBtn.classList.remove('hidden');
+            focusModeContainer.classList.remove('hidden');
+        }
+
+        function startStoper() {
+            startTime = Date.now();
+            loops = [];
+            timer = setInterval(() => {
+                const elapsedTime = (Date.now() - startTime) / 1000;
+                liveTimerDisplay.textContent = elapsedTime.toFixed(2).replace('.', ',');
+            }, 45);
+            focusStartBtn.classList.add('hidden');
+            focusBackBtn.classList.add('hidden');
+            focusRunningBtns.classList.remove('hidden');
+        }
+
+        function exitFocusModeWithoutSave() {
+            if (timer) {
+                clearInterval(timer);
+                timer = null;
+            }
+            focusModeContainer.classList.add('hidden');
+        }
+
+        function recordLoop() {
+            if (!startTime) return;
+            const elapsed = (Date.now() - startTime) / 1000;
+            loops.push(elapsed);
+            const alertBox = document.createElement('div');
+            alertBox.className = 'fixed top-4 left-1/2 -translate-x-1/2 bg-blue-600 text-white font-black text-2xl p-4 rounded-xl sun-border z-50';
+            alertBox.textContent = `ŁAPALNY CZAS ${loops.length}: ${elapsed.toFixed(2)}s`;
+            document.body.appendChild(alertBox);
+            setTimeout(() => alertBox.remove(), 1500);
+        }
+
+        function stopTimer() {
+            clearInterval(timer);
+            timer = null;
+            const finalTime = (Date.now() - startTime) / 1000;
+            const capturedLoops = [...loops];
+            const capturedStartTime = startTime;
+            // Reset state before modal (prevents reuse bug)
+            startTime = null;
+            loops = [];
+            
+            const closeFocus = () => {
+                focusModeContainer.classList.add('hidden');
+                hideModal();
+            };
+
+            if (capturedLoops.length === 0) {
+                updateResult(currentIndex, finalTime, false);
+                closeFocus();
+            } else {
+                let htmlContent = "<p class='mb-4 text-xl text-center'>Wybierz czas do zapisu:</p>";
+                const buttons = capturedLoops.map((l, i) => ({
+                    text: `Międzyczas ${i + 1}: ${l.toFixed(2)}s`, class: 'bg-blue-600 text-white p-4 text-xl w-full text-left sun-border',
+                    action: () => { updateResult(currentIndex, capturedLoops[i], false); closeFocus(); }
+                }));
+                buttons.push({
+                    text: `Czas końcowy: ${finalTime.toFixed(2)}s`, class: 'bg-green-600 text-white p-4 text-xl w-full text-left sun-border',
+                    action: () => { updateResult(currentIndex, finalTime, false); closeFocus(); }
+                });
+                buttons.push({ text: "❌ Anuluj start (Nie zapisuj)", class: "bg-red-600 text-white p-3 mt-4 w-full", action: closeFocus });
+                showModal("Wybór Wyniku Końcowego", htmlContent, buttons);
+            }
+        }
+
+        // --- ZARZĄDZANIE KONKURENCJAMI ---
+        function switchCompetition() {
+            currentCompetition = parseInt(competitionSelect.value);
+            competitionNameInput.value = competitions[currentCompetition].name;
+            updateSortButtonsUI();
+            updateAllUI();
+        }
+
+        function updateCompetitionName(newName) {
+            competitions[currentCompetition].name = newName.toUpperCase();
+            saveData();
+            currentCompHeader.textContent = competitions[currentCompetition].name;
+        }
+
+        function setSortOrder(order) {
+            competitions[currentCompetition].sortOrder = order;
+            updateSortButtonsUI();
+            updateAllUI();
+        }
+
+        function updateSortButtonsUI() {
+            const { sortOrder } = competitions[currentCompetition];
+            sortAscBtn.className = `flex-1 p-5 font-black rounded-lg text-xl md:text-2xl sun-border transition-colors ${sortOrder === 'asc' ? 'bg-amber-500 text-black' : 'bg-white text-black'}`;
+            sortDescBtn.className = `flex-1 p-5 font-black rounded-lg text-xl md:text-2xl sun-border transition-colors ${sortOrder === 'desc' ? 'bg-amber-500 text-black' : 'bg-white text-black'}`;
+        }
+
+        function sortResults(participants) {
+            const { sortOrder } = competitions[currentCompetition];
+            if (!sortOrder) return participants.filter(p => p.result !== null);
+
+            // Podział na trzy grupy:
+            //   1. Ukończyli (dnf != true, result != null) → sortuj wg zasad konkurencji
+            //   2. DNF (dnf == true, result != null)       → zawsze za ukończonymi
+            //      Wśród DNF: więcej dystansu = lepszy (sortowanie malejące po result)
+            //   3. Brak wyniku (result == null)            → na samym końcu, bez rangi
+            const finished = participants.filter(p => p.result !== null && !p.dnf);
+            const dnf      = participants.filter(p => p.result !== null &&  p.dnf);
+            // Brak wyniku celowo pomijamy – nie trafią na listę rankingową
+
+            const sortedFinished = finished.sort((a, b) =>
+                sortOrder === 'desc' ? b.result - a.result : a.result - b.result
+            );
+            // DNF: im więcej metrów/punktów cząstkowych, tym wyżej wśród nieukończonych
+            const sortedDnf = dnf.sort((a, b) => b.result - a.result);
+
+            return [...sortedFinished, ...sortedDnf];
+        }
+
+        function summarizeResults() {
+            const sorted = sortResults(competitions[currentCompetition].participants);
+            if (sorted.length === 0) {
+                showModal("Wyniki", "<p class='text-center py-4'>Brak zapisanych wyników na tym etapie.</p>", [{text: "OK", class: "bg-black text-white p-4 w-full", action: hideModal}]);
+                return;
+            }
+
+            // Policz ilu ukończyło (potrzebne do numerowania)
+            const finishedCount = sorted.filter(p => !p.dnf).length;
+            let place = 0;
+
+            let listHtml = '<ol class="list-none space-y-2 text-2xl font-black">';
+            sorted.forEach((p, idx) => {
+                const isDnf = p.dnf === true;
+                if (!isDnf) place++;
+
+                const podiumColor = !isDnf && place === 1 ? 'text-yellow-600'
+                                  : !isDnf && place === 2 ? 'text-gray-500'
+                                  : !isDnf && place === 3 ? 'text-amber-700'
+                                  : '';
+
+                const placeLabel = isDnf
+                    ? `<span class="text-sm bg-orange-400 text-black px-2 py-0.5 rounded font-black mr-1">DNF</span>`
+                    : `<span class="inline-block w-9 text-right mr-2 ${podiumColor}">${place}.</span>`;
+
+                const resultBadge = isDnf
+                    ? `<span class="bg-orange-100 border-2 border-orange-400 text-orange-700 px-2 py-0.5 rounded text-base">
+                           ${Number.isInteger(p.result) ? p.result : p.result.toFixed(2).replace('.', ',')} m/pkt cząst.
+                       </span>`
+                    : `<span class="bg-black text-white px-2 py-1 rounded">${formatResult(p.result, false)}</span>`;
+
+                listHtml += `
+                    <li class="flex items-center gap-1 p-2 border-b-2 ${isDnf ? 'border-orange-200 bg-orange-50' : 'border-gray-100'} ${podiumColor}">
+                        ${placeLabel}
+                        <span class="flex-1 truncate">${p.name}</span>
+                        ${resultBadge}
+                    </li>`;
+            });
+            listHtml += '</ol>';
+
+            const dnfCount = sorted.filter(p => p.dnf).length;
+            const footer = dnfCount > 0
+                ? `<p class="text-xs text-gray-400 mt-3">⚠️ DNF (${dnfCount}) – nie ukończyli, sklasyfikowani za ukończonymi wg dystansu cząstkowego.</p>`
+                : '';
+
+            showModal(`🏆 Tablica – ${competitions[currentCompetition].name}`,
+                listHtml + footer,
+                [{text: "POWRÓT DO SĘDZIOWANIA", class: "bg-green-600 text-white p-5 w-full text-2xl font-black sun-border", action: hideModal}]);
+        }
+
+        function resetCompetitionWithConfirmation() {
+            showModal("⚠️ Potwierdzenie", `<p class='text-xl text-center'>Czy na pewno wyczyścić wszystkich uczestników i wyniki z konkurencji "${competitions[currentCompetition].name}"?</p>`, [
+                {text: "Zostaw, błąd kliknięcia", class: "bg-gray-500 text-white p-4 w-full", action: hideModal},
+                {text: "TAK, WYCZYŚĆ WSZYSTKO", class: "bg-red-600 text-white p-4 w-full font-black sun-border", action: () => {
+                    competitions[currentCompetition].participants = [];
+                    updateAllUI();
+                    hideModal();
+                }}
+            ]);
+        }
+
+        // --- BEZPIECZNIK: JSON BACKUP/RESTORE ---
+        function downloadBackupJSON() {
+            const jsonStr = JSON.stringify(competitions, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const downloadAnchor = document.createElement('a');
+            const dateStr = new Date().toISOString().slice(0,10);
+            downloadAnchor.setAttribute("href", url);
+            downloadAnchor.setAttribute("download", `sedzia_zawody_backup_${dateStr}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            setTimeout(() => { URL.revokeObjectURL(url); downloadAnchor.remove(); }, 1000);
+        }
+
+        function uploadBackupJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            // Reset input so the same file can be re-selected if needed
+            event.target.value = '';
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    // Akceptuj tablicę z dowolną liczbą konkurencji (min 1)
+                    if (!Array.isArray(parsed) || parsed.length === 0) throw new Error("not_array");
+                    // Sprawdź, czy każdy element ma wymaganą strukturę
+                    const isValid = parsed.every(c =>
+                        c && typeof c === 'object' &&
+                        typeof c.name === 'string' &&
+                        Array.isArray(c.participants)
+                    );
+                    if (!isValid) throw new Error("bad_structure");
+
+                    // Uzupełnij do 8 konkurencji jeśli plik ma ich mniej
+                    const defaultState = Array.from({ length: 8 }, (_, i) => ({
+                        name: `KONKURENCJA ${i + 1}`,
+                        participants: [],
+                        sortOrder: null
+                    }));
+                    if (parsed.length < 8) {
+                        competitions = [...parsed, ...defaultState.slice(parsed.length)];
+                    } else {
+                        competitions = parsed.slice(0, 8);
+                    }
+                    // Upewnij się, że każda konkurencja ma pole sortOrder
+                    competitions.forEach(c => { if (c.sortOrder === undefined) c.sortOrder = null; });
+
+                    saveData();
+                    updateAllUI();
+                    showModal("✅ Sukces", `<p class='text-center text-green-600 p-4 text-2xl font-black'>Stan zawodów wczytany!<br><span class='text-base text-black font-normal'>Załadowano ${parsed.length} konkurencj${parsed.length === 1 ? 'ę' : parsed.length < 5 ? 'e' : 'i'}.</span></p>`, [{text: "SUPER", class: "bg-black text-white p-4 w-full text-xl font-black", action: hideModal}]);
+                } catch (err) {
+                    let msg = "Nieprawidłowy plik kopii zapasowej.";
+                    if (err.message === "not_array") msg = "Plik nie zawiera tablicy konkurencji.";
+                    if (err.message === "bad_structure") msg = "Struktura danych jest uszkodzona (brak pól name/participants).";
+                    showModal("❌ Błąd importu", `<p class='text-center text-red-600 p-4 text-xl'>${msg}<br><span class='text-sm text-gray-500'>Upewnij się, że wczytujesz plik pobrany przez „POBIERZ STAN (.JSON)".</span></p>`, [{text: "OK", class: "bg-black text-white p-4 w-full", action: hideModal}]);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // --- EKSPORT PDF ---
+        function exportPDF() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                const { name, participants } = competitions[currentCompetition];
+                const sorted = sortResults(participants);
+                
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(22);
+                doc.text(normalizeChars(name), doc.internal.pageSize.getWidth() / 2, 20, { align: 'center' });
+                
+                const columns = ["Miejsce", "Imie", "Wynik", "Uwagi"];
+                let place = 0;
+                const rows = sorted.map((p) => {
+                    const isDnf = p.dnf === true;
+                    if (!isDnf) place++;
+                    const placeLabel = isDnf ? 'DNF' : String(place);
+                    const resultLabel = p.result !== null
+                        ? (Number.isInteger(p.result) ? String(p.result) : p.result.toFixed(2))
+                        : '-';
+                    const note = isDnf ? normalizeChars(`Nie ukonczyl (${resultLabel} m/pkt)`) : '';
+                    return [placeLabel, normalizeChars(p.name), isDnf ? '-' : resultLabel, note];
+                });
+                
+                if (rows.length > 0) {
+                    doc.autoTable({
+                        head: [columns], body: rows, startY: 30, theme: 'grid',
+                        styles: { fontSize: 12, cellPadding: 3 },
+                        headStyles: { fillColor: [0, 0, 0], fontSize: 13 },
+                        didParseCell: (data) => {
+                            if (data.section === 'body' && data.row.raw[0] === 'DNF') {
+                                data.cell.styles.fillColor = [255, 237, 213];
+                                data.cell.styles.textColor = [180, 80, 0];
+                            }
+                        }
+                    });
+                } else {
+                    doc.setFontSize(14);
+                    doc.text("Brak wynikow do zapisu.", doc.internal.pageSize.getWidth() / 2, 40, { align: 'center' });
+                }
+                doc.save(`wyniki_${name.replace(/ /g, '_').toLowerCase()}.pdf`);
+            } catch (e) {
+                alert("Problem przy tworzeniu PDF.");
+            }
+        }
+
+        function normalizeChars(text) {
+            return String(text).replace(/[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/g, m => ({'ą':'a','ć':'c','ę':'e','ł':'l','ń':'n','ó':'o','ś':'s','ź':'z','ż':'z','Ą':'A','Ć':'C','Ę':'E','Ł':'L','Ń':'N','Ó':'O','Ś':'S','Ź':'Z','Ż':'Z'}[m]||m));
+        }
+
+        // --- OKNA MODALNE UTILS ---
+        function showModal(title, content, buttons) {
+            document.getElementById('modal-title').textContent = title;
+            document.getElementById('modal-content').innerHTML = content;
+            const container = document.getElementById('modal-buttons');
+            container.innerHTML = '';
+            buttons.forEach(b => {
+                const btn = document.createElement('button');
+                btn.textContent = b.text;
+                btn.className = `p-3 rounded-lg font-black tracking-wide text-center transition-all ${b.class}`;
+                btn.onclick = b.action;
+                container.appendChild(btn);
+            });
+            document.getElementById('modal-backdrop').classList.remove('hidden');
+            document.getElementById('modal-panel').classList.remove('hidden');
+        }
+        function hideModal() {
+            document.getElementById('modal-backdrop').classList.add('hidden');
+            document.getElementById('modal-panel').classList.add('hidden');
+        }
+
+        // --- WYDAJNA OBSŁUGA TRYBU OFFLINE (SERVICE WORKER) ---
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                // Budowanie kodu Service Workera bezpośrednio w izolowanym pliku dla pełnej zgodności offline w iOS Safari
+                const swCode = `
+                    const CACHE_NAME = 'sedzia-offline-v3';
+                    const ASSETS = [
+                        './',
+                        './index.html',
+                        'https://cdn.tailwindcss.com',
+                        'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js',
+                        'https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js'
+                    ];
+
+                    self.addEventListener('install', event => {
+                        event.waitUntil(
+                            caches.open(CACHE_NAME).then(cache => {
+                                return cache.addAll(ASSETS);
+                            }).then(() => self.skipWaiting())
+                        );
+                    });
+
+                    self.addEventListener('activate', event => {
+                        event.waitUntil(
+                            caches.keys().then(keys => {
+                                return Promise.all(
+                                    keys.map(key => {
+                                        if (key !== CACHE_NAME) {
+                                            return caches.delete(key);
+                                        }
+                                    })
+                                );
+                            }).then(() => self.clients.claim())
+                        );
+                    });
+
+                    self.addEventListener('fetch', event => {
+                        event.respondWith(
+                            caches.match(event.request).then(cachedResponse => {
+                                if (cachedResponse) {
+                                    return cachedResponse;
+                                }
+                                return fetch(event.request).then(response => {
+                                    if (!response || response.status !== 200 || response.type !== 'basic') {
+                                        return response;
+                                    }
+                                    const responseToCache = response.clone();
+                                    caches.open(CACHE_NAME).then(cache => {
+                                        cache.put(event.request, responseToCache);
+                                    });
+                                    return response;
+                                }).catch(() => {
+                                    // Zapasowe przekierowanie jeśli sieć padnie całkowicie
+                                    return caches.match('./index.html') || caches.match('./');
+                                });
+                            })
+                        );
+                    });
+                `;
+
+                const blob = new Blob([swCode], { type: 'application/javascript' });
+                const swUrl = URL.createObjectURL(blob);
+                
+                navigator.serviceWorker.register(swUrl)
+                    .then(reg => console.log('PWA Offline gotowy do użycia.'))
+                    .catch(err => console.log('Błąd inicjalizacji offline:', err));
+            });
+        }
+
+        // --- OBSŁUGA PRZYCISKU INSTALACJI (ANDROID / CHROME) ---
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('pwa-install-btn');
+            btn.classList.remove('hidden');
+            btn.addEventListener('click', () => {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then(() => {
+                    btn.classList.add('hidden');
+                    deferredPrompt = null;
+                });
+            });
+        });
+
+        window.onload = loadData;
+    </script>
+</body>
+</html>
