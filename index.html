@@ -374,6 +374,49 @@
             gap: .35rem;
         }
 
+        .start-card {
+            gap: .7rem;
+        }
+
+        .start-card .row-head {
+            grid-template-columns: auto 1fr;
+        }
+
+        .result-button {
+            width: 100%;
+            min-height: 4.2rem;
+            padding: .75rem;
+            border: var(--line);
+            border-radius: var(--radius);
+            background: #ffffff;
+            color: #000000;
+            font-size: clamp(1.45rem, 7vw, 2.7rem);
+            font-weight: 900;
+            line-height: 1;
+            text-align: center;
+            overflow-wrap: anywhere;
+        }
+
+        .result-button.empty-result {
+            background: var(--muted);
+            font-size: clamp(1.05rem, 5.3vw, 1.9rem);
+        }
+
+        .start-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: .45rem;
+        }
+
+        .start-actions .btn {
+            min-height: 3.55rem;
+            font-size: clamp(.9rem, 4.5vw, 1.25rem);
+        }
+
+        .start-actions .edit-main {
+            grid-column: 1 / -1;
+        }
+
         .empty {
             border: var(--line);
             border-radius: var(--radius);
@@ -1099,17 +1142,18 @@
             }
             const disabled = !comp.sortOrder;
             els.startList.innerHTML = participants.map((p, index) => `
-                <article class="row-card ${p.dnf ? "dnf" : p.result !== null ? "done" : ""}">
+                <article class="row-card start-card ${p.dnf ? "dnf" : p.result !== null ? "done" : ""}">
                     <div class="row-head">
                         <span class="badge">${index + 1}</span>
                         <span class="name">${escapeHtml(p.name)}</span>
-                        <button class="btn btn-small" data-action="edit-result" data-index="${index}" type="button">${escapeHtml(formatResult(p.result, p.dnf))}</button>
                     </div>
-                    <div class="row-actions">
-                        <button class="btn btn-small btn-green" data-action="start" data-index="${index}" ${disabled ? "disabled" : ""} type="button">Start</button>
-                        <button class="btn btn-small btn-orange" data-action="repeat" data-index="${index}" ${disabled ? "disabled" : ""} type="button">Powtórz</button>
-                        <button class="btn btn-small btn-blue" data-action="edit-result" data-index="${index}" type="button">Edytuj</button>
-                        <button class="btn btn-small btn-amber" data-action="clear-result" data-index="${index}" type="button">Wyczyść</button>
+                    <button class="result-button ${p.result === null ? "empty-result" : ""}" data-action="edit-result" data-index="${index}" type="button">
+                        ${p.result === null ? "BRAK WYNIKU" : escapeHtml(formatResult(p.result, p.dnf))}
+                    </button>
+                    <div class="start-actions">
+                        <button class="btn btn-green" data-action="start" data-index="${index}" ${disabled ? "disabled" : ""} type="button">Start</button>
+                        <button class="btn btn-orange" data-action="repeat" data-index="${index}" ${disabled ? "disabled" : ""} type="button">Powtórz</button>
+                        <button class="btn btn-blue edit-main" data-action="edit-result" data-index="${index}" type="button">Edycja</button>
                     </div>
                 </article>
             `).join("") + (disabled ? `<div class="note danger-note">Najpierw wybierz zasadę wyniku: mniej albo więcej = lepiej.</div>` : "");
