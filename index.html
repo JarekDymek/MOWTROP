@@ -106,11 +106,44 @@
         .top-actions {
             display: grid;
             grid-template-columns: repeat(2, minmax(3.25rem, 1fr));
-            gap: .35rem;
+            gap: .45rem;
         }
 
         .top-actions .install {
             grid-column: 1 / -1;
+        }
+
+        .action-tile {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            align-items: center;
+            justify-items: center;
+            gap: .35rem;
+            min-height: 3.4rem;
+            padding: .45rem .6rem;
+            border: 4px solid #000000;
+            border-radius: 8px;
+            background: #ffffff;
+            color: #000000;
+            font-weight: 900;
+            text-transform: uppercase;
+            box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .18);
+        }
+
+        .action-tile .tile-icon {
+            font-size: 1.45rem;
+            line-height: 1;
+        }
+
+        .action-tile .tile-label {
+            font-size: clamp(.75rem, 3.2vw, 1rem);
+            line-height: 1;
+        }
+
+        .action-tile:disabled {
+            background: #7a7a7a;
+            color: #111111;
+            box-shadow: none;
         }
 
         .btn {
@@ -157,24 +190,49 @@
         .tabs {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
+            gap: .35rem;
+            padding: .4rem;
             background: #000000;
             border-top: var(--line);
         }
 
         .tab {
-            min-height: 3.7rem;
-            border: 0;
-            border-right: 2px solid #000000;
+            display: grid;
+            grid-template-rows: auto auto;
+            place-items: center;
+            gap: .12rem;
+            min-height: 4.1rem;
+            border: 3px solid #000000;
+            border-radius: 10px;
             background: var(--ink);
             color: #ffffff;
-            font-size: clamp(.62rem, 2.8vw, .9rem);
             font-weight: 900;
             text-transform: uppercase;
+            line-height: 1;
+            box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .25);
+            overflow: hidden;
         }
 
         .tab.active {
             background: var(--amber);
             color: #000000;
+        }
+
+        .tab[data-view="konkurencja"] { background: #14532d; }
+        .tab[data-view="uczestnicy"] { background: #1d4ed8; }
+        .tab[data-view="start"] { background: #7c2d12; }
+        .tab[data-view="final"] { background: #581c87; }
+        .tab.active { background: var(--amber); color: #000000; }
+
+        .tab-icon {
+            font-size: clamp(1.05rem, 5vw, 1.55rem);
+            line-height: 1;
+        }
+
+        .tab-label {
+            font-size: clamp(.52rem, 2.45vw, .78rem);
+            line-height: .95;
+            text-align: center;
         }
 
         .view {
@@ -619,13 +677,22 @@
                 min-width: 9.5rem;
                 grid-template-columns: 1fr;
                 grid-auto-rows: 1fr;
+                padding: .55rem;
                 border-top: 0;
                 border-right: var(--line);
             }
 
             .tab {
                 min-height: 0;
-                font-size: 1.15rem;
+                border-radius: 12px;
+            }
+
+            .tab-icon {
+                font-size: 2rem;
+            }
+
+            .tab-label {
+                font-size: 1rem;
             }
 
             .content {
@@ -651,11 +718,11 @@
             }
 
             .top-actions {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(2, 1fr);
             }
 
             .top-actions .install {
-                grid-column: auto;
+                grid-column: 1 / -1;
             }
         }
     </style>
@@ -668,9 +735,9 @@
                 <span id="current-comp-header" class="brand-subtitle">KONKURENCJA 1</span>
             </div>
             <div class="top-actions">
-                <button id="undoBtn" class="btn btn-small" type="button">Cofnij</button>
-                <button id="redoBtn" class="btn btn-small" type="button">Ponów</button>
-                <button id="installBtn" class="btn btn-small btn-amber install hidden" type="button">Instaluj</button>
+                <button id="undoBtn" class="action-tile" type="button"><span class="tile-icon">↩️</span><span class="tile-label">Cofnij</span></button>
+                <button id="redoBtn" class="action-tile" type="button"><span class="tile-icon">↪️</span><span class="tile-label">Ponów</span></button>
+                <button id="installBtn" class="action-tile install hidden" type="button"><span class="tile-icon">📲</span><span class="tile-label">Instaluj</span></button>
             </div>
         </header>
 
@@ -786,10 +853,10 @@
             </section>
 
             <nav class="tabs" aria-label="Główne zakładki">
-                <button class="tab active" type="button" data-view="konkurencja">1. Konkurencja</button>
-                <button class="tab" type="button" data-view="uczestnicy">2. Uczestnicy</button>
-                <button class="tab" type="button" data-view="start">3. Start</button>
-                <button class="tab" type="button" data-view="final">4. Finał</button>
+                <button class="tab active" type="button" data-view="konkurencja"><span class="tab-icon">🏁</span><span class="tab-label">1. Konkurencja</span></button>
+                <button class="tab" type="button" data-view="uczestnicy"><span class="tab-icon">👥</span><span class="tab-label">2. Uczestnicy</span></button>
+                <button class="tab" type="button" data-view="start"><span class="tab-icon">⏱️</span><span class="tab-label">3. Start</span></button>
+                <button class="tab" type="button" data-view="final"><span class="tab-icon">🏆</span><span class="tab-label">4. Finał</span></button>
             </nav>
         </main>
     </div>

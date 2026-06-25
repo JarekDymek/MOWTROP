@@ -1,4 +1,4 @@
-const CACHE_NAME = "konkursy-cache-v4";
+const CACHE_NAME = "konkursy-cache-v5";
 const CORE_ASSETS = [
   "./",
   "./index.html",
