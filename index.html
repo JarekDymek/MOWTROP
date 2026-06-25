@@ -374,6 +374,25 @@
             gap: .35rem;
         }
 
+        .participant-editor-card {
+            gap: .7rem;
+        }
+
+        .participant-name-row {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: .5rem;
+            align-items: center;
+        }
+
+        .participant-name-input {
+            min-height: 3rem;
+            padding: .45rem .65rem;
+            background: #ffffff;
+            font-size: clamp(1.25rem, 6vw, 2rem);
+            line-height: 1.05;
+        }
+
         .start-card {
             gap: .7rem;
         }
@@ -550,11 +569,16 @@
         .timer {
             display: grid;
             place-items: center;
-            font-family: "Courier New", monospace;
-            font-size: clamp(4.2rem, 23vw, 13rem);
+            font-family: Impact, "Arial Black", Arial, Helvetica, sans-serif;
+            font-size: clamp(5.8rem, 31vw, 17rem);
             font-weight: 900;
             letter-spacing: 0;
-            line-height: .9;
+            line-height: .78;
+            font-variant-numeric: tabular-nums;
+            transform: scaleX(1.08);
+            cursor: pointer;
+            user-select: none;
+            touch-action: manipulation;
         }
 
         .focus-actions {
@@ -774,7 +798,7 @@
         <div class="focus-head">
             <div class="focus-label">Teraz startuje</div>
             <div id="focusName" class="focus-name"></div>
-            <div class="focus-label">Głośność / spacja: start albo stop, jeśli telefon przekaże klawisz do PWA</div>
+            <div class="focus-label">Dotknij cyfr, spacji albo klawisza media. Głośność działa tylko, jeśli telefon przekaże ją do PWA.</div>
         </div>
         <div id="liveTimer" class="timer">0,00</div>
         <div class="focus-actions">
@@ -831,6 +855,9 @@
         let loops = [];
         let deferredInstallPrompt = null;
         let toastTimeout = null;
+        let audioContext = null;
+        let lastHardwareToggle = 0;
+        const hardwareKeysDown = new Set();
 
         const els = {
             currentHeader: document.getElementById("current-comp-header"),
@@ -1116,13 +1143,14 @@
                 return;
             }
             els.participantEditorList.innerHTML = participants.map((p, index) => `
-                <article class="row-card ${p.dnf ? "dnf" : p.result !== null ? "done" : ""}">
-                    <div class="row-head">
+                <article class="row-card participant-editor-card ${p.dnf ? "dnf" : p.result !== null ? "done" : ""}">
+                    <div class="participant-name-row">
                         <span class="badge">${index + 1}</span>
-                        <span class="name">${escapeHtml(p.name)}</span>
-                        <span class="result">${escapeHtml(formatResult(p.result, p.dnf))}</span>
+                        <input class="participant-name-input" data-action="rename-participant" data-index="${index}" type="text" maxlength="40" value="${escapeHtml(p.name)}" aria-label="Nazwa uczestnika ${index + 1}">
                     </div>
-                    <input data-action="rename-participant" data-index="${index}" type="text" maxlength="40" value="${escapeHtml(p.name)}" aria-label="Nazwa uczestnika ${index + 1}">
+                    <button class="result-button ${p.result === null ? "empty-result" : ""}" data-action="edit-result" data-index="${index}" type="button">
+                        ${p.result === null ? "BRAK WYNIKU" : escapeHtml(formatResult(p.result, p.dnf))}
+                    </button>
                     <div class="row-actions">
                         <button class="btn btn-small btn-blue" data-action="edit-result" data-index="${index}" type="button">Wynik</button>
                         <button class="btn btn-small btn-amber" data-action="clear-result" data-index="${index}" type="button">Czyść</button>
@@ -1339,10 +1367,49 @@
             els.focusRunningBtns.classList.add("hidden");
             els.focusMode.classList.remove("hidden");
             els.focusMode.setAttribute("aria-hidden", "false");
+            primeFeedback();
+        }
+
+        function primeFeedback() {
+            try {
+                const AudioCtor = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtor) return;
+                if (!audioContext) audioContext = new AudioCtor();
+                if (audioContext.state === "suspended") audioContext.resume();
+            } catch (error) {
+                console.warn("Audio feedback unavailable", error);
+            }
+        }
+
+        function playSignal(kind) {
+            if (navigator.vibrate) {
+                const pattern = kind === "stop" ? [260, 80, 260, 80, 360] : [220, 70, 220];
+                navigator.vibrate(pattern);
+            }
+            try {
+                primeFeedback();
+                if (!audioContext) return;
+                const now = audioContext.currentTime;
+                const gain = audioContext.createGain();
+                gain.gain.setValueAtTime(0.0001, now);
+                gain.gain.exponentialRampToValueAtTime(0.95, now + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.28);
+                gain.connect(audioContext.destination);
+                const osc = audioContext.createOscillator();
+                osc.type = "square";
+                osc.frequency.setValueAtTime(kind === "stop" ? 440 : 880, now);
+                if (kind === "stop") osc.frequency.setValueAtTime(330, now + 0.14);
+                osc.connect(gain);
+                osc.start(now);
+                osc.stop(now + 0.3);
+            } catch (error) {
+                console.warn("Beep unavailable", error);
+            }
         }
 
         function startStoper() {
             if (timer) return;
+            playSignal("start");
             startTime = Date.now();
             loops = [];
             timer = setInterval(() => {
@@ -1357,6 +1424,7 @@
             if (!timer || !startTime) return;
             const elapsed = (Date.now() - startTime) / 1000;
             loops.push(Math.round(elapsed * 100) / 100);
+            if (navigator.vibrate) navigator.vibrate([90, 40, 90]);
             toast(`Loop ${loops.length}: ${elapsed.toFixed(2).replace(".", ",")}`);
         }
 
@@ -1372,6 +1440,7 @@
 
         function stopTimer() {
             if (!timer || !startTime || activeTimerIndex === null) return;
+            playSignal("stop");
             const finalTime = Math.round(((Date.now() - startTime) / 1000) * 100) / 100;
             clearInterval(timer);
             timer = null;
@@ -1554,6 +1623,30 @@
             if (action === "repeat") launchFocus(index, true);
         }
 
+        function toggleTimerFromHardware(event) {
+            const keys = ["VolumeUp", "VolumeDown", "AudioVolumeUp", "AudioVolumeDown", "MediaPlayPause", "MediaTrackNext", "MediaTrackPrevious", "HeadsetHook", " ", "Enter"];
+            const code = event.code || "";
+            const key = event.key || "";
+            if (els.focusMode.classList.contains("hidden") || (!keys.includes(key) && !keys.includes(code))) return;
+            const keyId = key || code;
+            if (event.type === "keydown") {
+                if (event.repeat || hardwareKeysDown.has(keyId)) return;
+                hardwareKeysDown.add(keyId);
+            }
+            if (event.type === "keyup" && hardwareKeysDown.has(keyId)) {
+                hardwareKeysDown.delete(keyId);
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            const now = Date.now();
+            if (now - lastHardwareToggle < 450) return;
+            lastHardwareToggle = now;
+            event.preventDefault();
+            event.stopPropagation();
+            if (timer) stopTimer(); else startStoper();
+        }
+
         function handleRename(event) {
             const input = event.target.closest("[data-action='rename-participant']");
             if (!input) return;
@@ -1632,15 +1725,25 @@
             els.resetAllBtn.addEventListener("click", () => confirmAction("Reset całej aplikacji?", "Wszystkie konkurencje, wyniki i logo zostaną wyczyszczone.", "Resetuj wszystko", () => commit("Zresetowano aplikację", () => state = defaultState())));
             els.modalBackdrop.addEventListener("click", hideModal);
             els.focusStartBtn.addEventListener("click", startStoper);
+            els.liveTimer.addEventListener("click", () => {
+                if (timer) stopTimer(); else startStoper();
+            });
             els.loopBtn.addEventListener("click", recordLoop);
             els.stopBtn.addEventListener("click", stopTimer);
             els.cancelFocusBtn.addEventListener("click", () => confirmAction("Anulować próbę?", "Stoper zostanie zamknięty bez zapisu.", "Anuluj próbę", closeFocus));
+            if ("mediaSession" in navigator) {
+                ["play", "pause", "stop", "seekbackward", "seekforward", "previoustrack", "nexttrack"].forEach((action) => {
+                    try {
+                        navigator.mediaSession.setActionHandler(action, () => {
+                            if (!els.focusMode.classList.contains("hidden")) {
+                                if (timer) stopTimer(); else startStoper();
+                            }
+                        });
+                    } catch {}
+                });
+            }
             window.addEventListener("keydown", (event) => {
-                const keys = ["VolumeUp", "VolumeDown", "AudioVolumeUp", "AudioVolumeDown", "MediaPlayPause", " ", "Enter"];
-                if (!els.focusMode.classList.contains("hidden") && keys.includes(event.key)) {
-                    event.preventDefault();
-                    if (timer) stopTimer(); else startStoper();
-                }
+                toggleTimerFromHardware(event);
                 if (event.ctrlKey && event.key.toLowerCase() === "z") {
                     event.preventDefault();
                     undo();
@@ -1650,6 +1753,7 @@
                     redo();
                 }
             });
+            window.addEventListener("keyup", toggleTimerFromHardware);
 
             window.addEventListener("beforeinstallprompt", (event) => {
                 event.preventDefault();
