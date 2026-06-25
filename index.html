@@ -407,11 +407,14 @@
             color: #ffffff;
             font-weight: 900;
             text-align: center;
-            transform: translateY(150%);
-            transition: transform .18s ease;
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(calc(100% + 5rem));
+            transition: opacity .12s ease, transform .18s ease;
         }
 
         .toast.show {
+            opacity: 1;
             transform: translateY(0);
         }
 
@@ -896,25 +899,61 @@
             return state.competitions[currentCompetition];
         }
 
+        function safeLocalStorageSet(key, value) {
+            try {
+                localStorage.setItem(key, value);
+                return true;
+            } catch (error) {
+                console.warn("Nie udało się zapisać danych pomocniczych:", key, error);
+                return false;
+            }
+        }
+
+        function trimHistoryAfterStorageError() {
+            undoStack = undoStack.slice(-12);
+            redoStack = redoStack.slice(-12);
+            try {
+                const autosaves = safeParse(localStorage.getItem(APP_AUTOSAVE_KEY), []);
+                localStorage.setItem(APP_AUTOSAVE_KEY, JSON.stringify(autosaves.slice(0, 3)));
+            } catch {
+                try { localStorage.removeItem(APP_AUTOSAVE_KEY); } catch {}
+            }
+        }
+
         function saveStacks() {
-            localStorage.setItem(APP_UNDO_KEY, JSON.stringify(undoStack.slice(-MAX_HISTORY)));
-            localStorage.setItem(APP_REDO_KEY, JSON.stringify(redoStack.slice(-MAX_HISTORY)));
+            const undoOk = safeLocalStorageSet(APP_UNDO_KEY, JSON.stringify(undoStack.slice(-MAX_HISTORY)));
+            const redoOk = safeLocalStorageSet(APP_REDO_KEY, JSON.stringify(redoStack.slice(-MAX_HISTORY)));
+            if (!undoOk || !redoOk) {
+                trimHistoryAfterStorageError();
+                safeLocalStorageSet(APP_UNDO_KEY, JSON.stringify(undoStack));
+                safeLocalStorageSet(APP_REDO_KEY, JSON.stringify(redoStack));
+            }
         }
 
         function saveState() {
             state = sanitizeState(state);
-            localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+            try {
+                localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+            } catch (error) {
+                trimHistoryAfterStorageError();
+                localStorage.setItem(APP_STATE_KEY, JSON.stringify(state));
+            }
             saveAutoCopy();
         }
 
         function saveAutoCopy() {
-            const autosaves = safeParse(localStorage.getItem(APP_AUTOSAVE_KEY), []);
-            autosaves.unshift({
-                at: new Date().toISOString(),
-                state: clone(state),
-                currentCompetition
-            });
-            localStorage.setItem(APP_AUTOSAVE_KEY, JSON.stringify(autosaves.slice(0, MAX_AUTOSAVES)));
+            try {
+                const autosaves = safeParse(localStorage.getItem(APP_AUTOSAVE_KEY), []);
+                autosaves.unshift({
+                    at: new Date().toISOString(),
+                    state: clone(state),
+                    currentCompetition
+                });
+                const compactLimit = state.logoData ? 4 : MAX_AUTOSAVES;
+                safeLocalStorageSet(APP_AUTOSAVE_KEY, JSON.stringify(autosaves.slice(0, compactLimit)));
+            } catch (error) {
+                console.warn("Auto-kopia pominięta:", error);
+            }
         }
 
         function load() {
@@ -1112,9 +1151,17 @@
 
         function toast(message) {
             clearTimeout(toastTimeout);
+            if (!message) {
+                els.toast.classList.remove("show");
+                els.toast.textContent = "";
+                return;
+            }
             els.toast.textContent = message;
             els.toast.classList.add("show");
-            toastTimeout = setTimeout(() => els.toast.classList.remove("show"), 1400);
+            toastTimeout = setTimeout(() => {
+                els.toast.classList.remove("show");
+                els.toast.textContent = "";
+            }, 1400);
         }
 
         function showModal(title, html, buttons) {
