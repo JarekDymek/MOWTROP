@@ -1,4 +1,4 @@
-const CACHE_NAME = "konkursy-cache-v1";
+const CACHE_NAME = "konkursy-cache-v2";
 const CORE_ASSETS = [
   "./",
   "./index.html",
@@ -26,6 +26,22 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
+  const isNavigation = event.request.mode === "navigate";
+  const acceptsHtml = event.request.headers.get("accept")?.includes("text/html");
+  if (isNavigation || acceptsHtml) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          if (response.ok) {
+            const copy = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+          }
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+    );
+    return;
+  }
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) return cached;

@@ -750,7 +750,7 @@
         <div id="modalContent" class="modal-content"></div>
         <div id="modalButtons" class="modal-buttons"></div>
     </section>
-    <div id="toast" class="toast" role="status"></div>
+    <div id="toast" class="toast hidden" role="status"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
@@ -1154,13 +1154,18 @@
             if (!message) {
                 els.toast.classList.remove("show");
                 els.toast.textContent = "";
+                els.toast.classList.add("hidden");
                 return;
             }
+            els.toast.classList.remove("hidden");
             els.toast.textContent = message;
-            els.toast.classList.add("show");
+            requestAnimationFrame(() => els.toast.classList.add("show"));
             toastTimeout = setTimeout(() => {
                 els.toast.classList.remove("show");
-                els.toast.textContent = "";
+                setTimeout(() => {
+                    els.toast.textContent = "";
+                    els.toast.classList.add("hidden");
+                }, 220);
             }, 1400);
         }
 
